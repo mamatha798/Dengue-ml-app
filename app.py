@@ -1,7 +1,7 @@
 import streamlit as st
 
 st.title("Dengue Prediction App")
-st.markdown("[🔙 Back to Website](https://mamatha798.github.io/dengueprediction/)")
+st.markdown("[🔙 Back to Website]("https://github.com/mamatha798/Dengueprediction")
 st.write("Enter the details below to check dengue possibility.")
 
 fever = st.number_input("Fever (°C)", min_value=90.0, max_value=110.0, step=0.1)
