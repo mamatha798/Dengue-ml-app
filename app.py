@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
+
 
 # ----- APP TITLE -----
 st.title("Dengue Prediction App")
