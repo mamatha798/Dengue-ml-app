@@ -1,30 +1,6 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import sqlite3
-
-# ============================
-# DATABASE CONNECTION
-# ============================
-conn = sqlite3.connect('dengue_data.db')
-c = conn.cursor()
-
-# Create table if not exists
-c.execute('''
-CREATE TABLE IF NOT EXISTS predictions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    fever REAL,
-    headache TEXT,
-    rash TEXT,
-    vomiting TEXT,
-    platelets INTEGER,
-    joint_pain TEXT,
-    nausea TEXT,
-    travel_history TEXT,
-    risk_level TEXT
-)
-''')
-conn.commit()
 
 # ============================
 # APP TITLE
@@ -49,7 +25,7 @@ nausea = st.selectbox("Nausea", ["No", "Yes"])
 travel_history = st.selectbox("Recent Travel to Dengue-prone Area", ["No", "Yes"])
 
 # ============================
-# PREDICTION
+# PREDICTION LOGIC
 # ============================
 if st.button("Predict"):
     # ----- SIMPLE RISK LOGIC -----
@@ -79,18 +55,7 @@ if st.button("Predict"):
         bar_color = 'green'
 
     # ============================
-    # SAVE PREDICTION TO DATABASE
-    # ============================
-    c.execute("""
-        INSERT INTO predictions (fever, headache, rash, vomiting, platelets, joint_pain, nausea, travel_history, risk_level)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (fever, headache, rash, vomiting, platelets, joint_pain, nausea, travel_history, risk_level))
-
-    conn.commit()
-    st.success("✔ Prediction saved to database!")
-
-    # ============================
-    # RISK CHART
+    # RISK FACTOR CONTRIBUTION CHART
     # ============================
     st.subheader("Risk Factor Contribution")
     data = pd.DataFrame({
