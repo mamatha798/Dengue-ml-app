@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 # ============================
 # APP TITLE
@@ -75,10 +76,15 @@ if st.button("Predict"):
     # Color chart
     plt.figure(figsize=(8,4))
     colors = ['red' if val > 1 else 'orange' if val == 1 else 'green' for val in data['Score']]
-    plt.bar(data['Risk Factor'], data['Score'], color=colors)
+    sns.barplot(x='Risk Factor', y='Score', data=data, palette=colors)
     plt.ylabel("Score Contribution")
     plt.title(f"Overall Risk Level: {risk_level}")
     plt.xticks(rotation=45)
+
+    # Add annotations to bars for clarity
+    for i, score in enumerate(data['Score']):
+        plt.text(i, score + 0.1, str(score), ha='center', color='black', fontsize=12)
+
     plt.ylim(0, 3)
     st.pyplot(plt)
 
