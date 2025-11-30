@@ -1,9 +1,34 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 import sqlite3
 
+# ============================
+# DATABASE CONNECTION
+# ============================
+conn = sqlite3.connect('dengue_data.db')
+c = conn.cursor()
 
-# ----- APP TITLE -----
+# Create table if not exists
+c.execute('''
+CREATE TABLE IF NOT EXISTS predictions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fever REAL,
+    headache TEXT,
+    rash TEXT,
+    vomiting TEXT,
+    platelets INTEGER,
+    joint_pain TEXT,
+    nausea TEXT,
+    travel_history TEXT,
+    risk_level TEXT
+)
+''')
+conn.commit()
+
+# ============================
+# APP TITLE
+# ============================
 st.title("Dengue Prediction App")
 
 # ----- BACK LINK -----
@@ -11,7 +36,9 @@ st.markdown('[🔙 Back to Website](https://github.com/mamatha798/Denguepredicti
 
 st.write("Enter the details below to check dengue possibility.")
 
-# ----- USER INPUTS -----
+# ============================
+# USER INPUTS
+# ============================
 fever = st.number_input("Fever (°C)", min_value=35.0, max_value=42.0, step=0.1)
 headache = st.selectbox("Headache", ["No", "Mild", "Severe"])
 rash = st.selectbox("Skin Rash", ["No", "Yes"])
@@ -21,9 +48,11 @@ joint_pain = st.selectbox("Joint/Muscle Pain", ["No", "Yes"])
 nausea = st.selectbox("Nausea", ["No", "Yes"])
 travel_history = st.selectbox("Recent Travel to Dengue-prone Area", ["No", "Yes"])
 
-# ----- PREDICTION BUTTON -----
+# ============================
+# PREDICTION
+# ============================
 if st.button("Predict"):
-    # ----- DUMMY LOGIC -----
+    # ----- SIMPLE RISK LOGIC -----
     risk_score = 0
     if fever > 38: risk_score += 2
     if headache == "Severe": risk_score += 2
@@ -35,7 +64,7 @@ if st.button("Predict"):
     if nausea == "Yes": risk_score += 1
     if travel_history == "Yes": risk_score += 1
 
-    # ----- DETERMINE RISK LEVEL -----
+    # ----- RISK LEVEL -----
     if risk_score >= 6:
         risk_level = "High Risk"
         st.error("High Risk of Dengue! Please consult a doctor immediately.")
@@ -49,7 +78,20 @@ if st.button("Predict"):
         st.success("Low Risk of Dengue. Continue preventive measures.")
         bar_color = 'green'
 
-    # ----- SHOW RISK LEVEL CHART -----
+    # ============================
+    # SAVE PREDICTION TO DATABASE
+    # ============================
+    c.execute("""
+        INSERT INTO predictions (fever, headache, rash, vomiting, platelets, joint_pain, nausea, travel_history, risk_level)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (fever, headache, rash, vomiting, platelets, joint_pain, nausea, travel_history, risk_level))
+
+    conn.commit()
+    st.success("✔ Prediction saved to database!")
+
+    # ============================
+    # RISK CHART
+    # ============================
     st.subheader("Risk Factor Contribution")
     data = pd.DataFrame({
         'Risk Factor': ['Fever', 'Headache', 'Rash', 'Vomiting', 'Platelets', 'Joint Pain', 'Nausea', 'Travel History'],
@@ -64,9 +106,8 @@ if st.button("Predict"):
             1 if travel_history == "Yes" else 0
         ]
     })
-    
-    # Color-coded chart
-    import matplotlib.pyplot as plt
+
+    # Color chart
     plt.figure(figsize=(8,4))
     colors = ['red' if val > 1 else 'orange' if val == 1 else 'green' for val in data['Score']]
     plt.bar(data['Risk Factor'], data['Score'], color=colors)
@@ -76,6 +117,6 @@ if st.button("Predict"):
     plt.ylim(0, 3)
     st.pyplot(plt)
 
-# ----- FOOTER INFO -----
+# ----- FOOTER -----
 st.markdown("---")
 st.info("ℹ️ This is a demo prediction app. Real ML model integration will be added soon.")
