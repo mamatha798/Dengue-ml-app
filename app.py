@@ -84,4 +84,4 @@ if st.button("Predict"):
 
 # ----- FOOTER -----
 st.markdown("---")
-st.info("ℹ️ This is a demo prediction app. Real ML model integration will be added soon.")
+st.info("ℹ️ This is a demo prediction app. Real MachineLearning model integration will be added soon.")
