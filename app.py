@@ -1,7 +1,4 @@
 import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 # ============================
 # APP TITLE
@@ -45,49 +42,13 @@ if st.button("Predict"):
     if risk_score >= 6:
         risk_level = "High Risk"
         st.error("High Risk of Dengue! Please consult a doctor immediately.")
-        bar_color = 'red'
     elif risk_score >= 3:
         risk_level = "Moderate Risk"
         st.warning("Moderate Risk of Dengue. Take precautions and monitor symptoms.")
-        bar_color = 'orange'
     else:
         risk_level = "Low Risk"
         st.success("Low Risk of Dengue. Continue preventive measures.")
-        bar_color = 'green'
-
-    # ============================
-    # RISK FACTOR CONTRIBUTION CHART
-    # ============================
-    st.subheader("Risk Factor Contribution")
-    data = pd.DataFrame({
-        'Risk Factor': ['Fever', 'Headache', 'Rash', 'Vomiting', 'Platelets', 'Joint Pain', 'Nausea', 'Travel History'],
-        'Score': [
-            2 if fever > 38 else 0,
-            2 if headache == "Severe" else 1 if headache == "Mild" else 0,
-            1 if rash == "Yes" else 0,
-            1 if vomiting == "Yes" else 0,
-            2 if platelets < 150000 else 0,
-            1 if joint_pain == "Yes" else 0,
-            1 if nausea == "Yes" else 0,
-            1 if travel_history == "Yes" else 0
-        ]
-    })
-
-    # Color chart
-    plt.figure(figsize=(8,4))
-    colors = ['red' if val > 1 else 'orange' if val == 1 else 'green' for val in data['Score']]
-    sns.barplot(x='Risk Factor', y='Score', data=data, palette=colors)
-    plt.ylabel("Score Contribution")
-    plt.title(f"Overall Risk Level: {risk_level}")
-    plt.xticks(rotation=45)
-
-    # Add annotations to bars for clarity
-    for i, score in enumerate(data['Score']):
-        plt.text(i, score + 0.1, str(score), ha='center', color='black', fontsize=12)
-
-    plt.ylim(0, 3)
-    st.pyplot(plt)
 
 # ----- FOOTER -----
 st.markdown("---")
-st.info("ℹ️ This is a demo prediction app. Real MachineLearning model integration will be added soon.")
+st.info("ℹ️ This is a demo prediction app. Real Machine Learning model integration will be added soon.")
