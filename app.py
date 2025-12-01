@@ -1,6 +1,28 @@
 import streamlit as st
 import sqlite3
-import matplotlib.pyplot as plt
+import matplotlib
+
+def create_table():
+    conn = sqlite3.connect('dengue_data.db')
+    cur = conn.cursor()
+    cur.execute('''
+    CREATE TABLE IF NOT EXISTS dengue_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fever REAL,
+        headache TEXT,
+        rash TEXT,
+        vomiting TEXT,
+        platelet_count INTEGER,
+        joint_pain TEXT,
+        nausea TEXT,
+        travel_history TEXT,
+        risk_level TEXT
+    )
+    ''')
+    conn.commit()
+    conn.close()
+
+create_table()  # Call it
 
 # ============================
 # APP TITLE
