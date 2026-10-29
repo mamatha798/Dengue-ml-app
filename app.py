@@ -52,6 +52,40 @@ st.markdown(
         background: #087e8b; border: 0; color: white;
         border-radius: 10px; font-weight: 700;
     }
+    /* Fix blurry weather metrics and values */
+[data-testid="stMetric"] {
+    background-color: #ffffff !important;
+    border: 1px solid #dce7ee !important;
+    border-radius: 14px !important;
+    padding: 18px !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+[data-testid="stMetricLabel"],
+[data-testid="stMetricLabel"] p {
+    color: #17324d !important;
+    opacity: 1 !important;
+    filter: none !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+}
+
+[data-testid="stMetricValue"],
+[data-testid="stMetricValue"] div,
+[data-testid="stMetricValue"] p {
+    color: #087e8b !important;
+    opacity: 1 !important;
+    filter: none !important;
+    font-size: 30px !important;
+    font-weight: 800 !important;
+    -webkit-text-fill-color: #087e8b !important;
+}
+
+[data-testid="stMetricDelta"] {
+    opacity: 1 !important;
+    filter: none !important;
+}
     </style>
     """,
     unsafe_allow_html=True,
