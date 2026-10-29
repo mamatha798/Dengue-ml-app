@@ -1,25 +1,21 @@
+
 import streamlit as st
 import sqlite3
-import urllib.request
-import json
+import requests
 from datetime import datetime
-import pandas as pd
+from pathlib import Path
 
-# =====================================================
-# 1. PAGE CONFIGURATION
-# =====================================================
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Dengue AI Guardian",
-    page_icon="🩺",
+    page_icon="🦟",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-DB_NAME = "dengue_guardian.db"
+DB_PATH = Path(__file__).with_name("dengue_guardian.db")
 
-# =====================================================
-# 2. PROFESSIONAL DESIGN AND DROPDOWN FIX
-# =====================================================
+# ---------------- DESIGN / CSS ----------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -29,380 +25,320 @@ html, body, [class*="css"] {
 }
 
 [data-testid="stAppViewContainer"] {
-    background: #F5F8FC;
+    background-color: #F4F7FB;
 }
 
 [data-testid="stHeader"] {
-    background: #F5F8FC;
+    background-color: #F4F7FB;
 }
 
-/* Sidebar */
 [data-testid="stSidebar"] {
-    background: #102A43;
-    min-width: 280px;
+    background-color: #102A43;
 }
 
 [data-testid="stSidebar"] > div {
-    background: #102A43;
+    background-color: #102A43;
 }
 
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] p,
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
 [data-testid="stSidebar"] h3,
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label,
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {
-    color: #FFFFFF;
+    color: #FFFFFF !important;
 }
 
-[data-testid="stSidebar"] h1 {
-    font-size: 25px !important;
-    font-weight: 800 !important;
+/* FIX: Make main-page field labels visible */
+[data-testid="stMain"] label,
+[data-testid="stMain"] [data-testid="stWidgetLabel"],
+[data-testid="stMain"] [data-testid="stWidgetLabel"] p,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] p {
+    color: #17324D !important;
+    -webkit-text-fill-color: #17324D !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
 }
 
-[data-testid="stSidebar"] h2 {
-    font-size: 21px !important;
-}
-
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] label {
-    font-size: 17px !important;
-    line-height: 1.6 !important;
-}
-
-/* Main headings */
-h1 {
-    color: #102A43 !important;
-    font-size: 32px !important;
-    font-weight: 800 !important;
-}
-
-h2 {
-    color: #163A56 !important;
-    font-size: 25px !important;
-    font-weight: 700 !important;
-}
-
-h3 {
-    color: #163A56 !important;
-    font-size: 20px !important;
-    font-weight: 700 !important;
-}
-
-p, li {
-    line-height: 1.65;
-}
-
-/* Input fields */
-div[data-baseweb="select"] > div {
+/* Dropdown text and background */
+[data-testid="stMain"] [data-baseweb="select"] > div {
     background-color: #FFFFFF !important;
     border-color: #CBD5E1 !important;
 }
 
-div[data-baseweb="select"] input {
-    color: #102A43 !important;
-    -webkit-text-fill-color: #102A43 !important;
+[data-testid="stMain"] [data-baseweb="select"] * {
+    color: #17324D !important;
+    -webkit-text-fill-color: #17324D !important;
 }
 
-/* Dropdown menu: readable Yes/No options */
-div[data-baseweb="popover"],
-div[data-baseweb="popover"] > div,
-ul[role="listbox"] {
+[data-testid="stMain"] input {
+    color: #17324D !important;
+    -webkit-text-fill-color: #17324D !important;
     background-color: #FFFFFF !important;
 }
 
-li[role="option"],
-div[role="option"] {
-    background-color: #FFFFFF !important;
-    color: #102A43 !important;
-    -webkit-text-fill-color: #102A43 !important;
-    font-size: 16px !important;
+/* Main headings */
+h1, h2, h3 {
+    color: #102A43;
 }
 
-li[role="option"] *,
-div[role="option"] * {
-    color: #102A43 !important;
-    -webkit-text-fill-color: #102A43 !important;
+.hero {
+    background: linear-gradient(120deg, #102A43, #087E8B);
+    padding: 28px;
+    border-radius: 18px;
+    color: white;
+    margin-bottom: 22px;
 }
 
-li[role="option"]:hover,
-div[role="option"]:hover {
-    background-color: #E6F4F5 !important;
-    color: #102A43 !important;
+.hero h1, .hero p {
+    color: white !important;
 }
 
-/* Buttons */
-.stButton button,
-.stFormSubmitButton button {
-    min-height: 44px;
-    border-radius: 8px;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-}
-
-/* Metric cards */
-div[data-testid="stMetric"] {
-    background: #FFFFFF;
-    padding: 18px;
+.metric-card {
+    background: white;
     border: 1px solid #E1E8F0;
-    border-radius: 12px;
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 10px;
 }
 
-div[data-testid="stMetricValue"] {
-    color: #147D92;
+.metric-label {
+    color: #526579;
+    font-size: 14px;
+}
+
+.metric-value {
+    color: #102A43;
+    font-size: 25px;
+    font-weight: 800;
+}
+
+.info-card {
+    background: white;
+    border-left: 4px solid #087E8B;
+    border-radius: 10px;
+    padding: 16px;
+    margin: 10px 0;
+    color: #17324D;
+}
+
+div.stButton > button {
+    background-color: #087E8B;
+    color: white !important;
+    border: none;
+    border-radius: 9px;
+    padding: 10px 18px;
     font-weight: 700;
 }
 
-/* Banner */
-.app-banner {
-    background: linear-gradient(110deg, #102A43, #147D92);
-    padding: 25px;
-    border-radius: 14px;
-    margin-bottom: 20px;
+div.stButton > button:hover {
+    background-color: #066773;
+    color: white !important;
 }
 
-.app-banner h2 {
-    color: #FFFFFF !important;
-    margin: 0;
-}
-
-.app-banner p {
-    color: #FFFFFF;
-    font-size: 16px;
-}
-
-hr {
-    border-color: #DCE5EE;
+div[data-testid="stAlert"] {
+    border-radius: 10px;
 }
 </style>
 """, unsafe_allow_html=True)
 
 
-# =====================================================
-# 3. DATABASE
-# =====================================================
-def init_database():
-    with sqlite3.connect(DB_NAME) as conn:
+# ---------------- DATABASE ----------------
+def get_connection():
+    connection = sqlite3.connect(DB_PATH)
+    connection.row_factory = sqlite3.Row
+    return connection
+
+
+def initialize_database():
+    with get_connection() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS patient_records (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                record_date TEXT,
-                fever_temp REAL,
+                record_date TEXT NOT NULL,
+                temperature REAL,
                 headache TEXT,
-                skin_rash TEXT,
+                rash TEXT,
                 vomiting TEXT,
-                platelet_count INTEGER,
                 joint_pain TEXT,
                 nausea TEXT,
                 travel_history TEXT,
+                platelet_count INTEGER,
+                warning_signs TEXT,
                 symptom_score INTEGER
             )
         """)
 
-        # Add any missing columns to an older version of this table.
-        existing = {
-            row[1] for row in
-            conn.execute("PRAGMA table_info(patient_records)").fetchall()
-        }
 
-        needed_columns = {
-            "record_date": "TEXT",
-            "fever_temp": "REAL",
-            "headache": "TEXT",
-            "skin_rash": "TEXT",
-            "vomiting": "TEXT",
-            "platelet_count": "INTEGER",
-            "joint_pain": "TEXT",
-            "nausea": "TEXT",
-            "travel_history": "TEXT",
-            "symptom_score": "INTEGER"
-        }
-
-        for column, datatype in needed_columns.items():
-            if column not in existing:
-                conn.execute(
-                    f"ALTER TABLE patient_records ADD COLUMN {column} {datatype}"
-                )
-
-        conn.commit()
+initialize_database()
 
 
-def save_record(record):
-    with sqlite3.connect(DB_NAME) as conn:
-        conn.execute("""
-            INSERT INTO patient_records (
-                record_date, fever_temp, headache, skin_rash,
-                vomiting, platelet_count, joint_pain, nausea,
-                travel_history, symptom_score
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            record["fever_temp"],
-            record["headache"],
-            record["skin_rash"],
-            record["vomiting"],
-            record["platelet_count"],
-            record["joint_pain"],
-            record["nausea"],
-            record["travel_history"],
-            record["symptom_score"]
-        ))
-        conn.commit()
-
-
-def load_records():
-    with sqlite3.connect(DB_NAME) as conn:
-        return pd.read_sql_query(
-            "SELECT * FROM patient_records ORDER BY id DESC",
-            conn
-        )
-
-
-init_database()
-
-
-# =====================================================
-# 4. LIVE WEATHER
-# =====================================================
+# ---------------- WEATHER ----------------
 @st.cache_data(ttl=900, show_spinner=False)
 def get_weather():
-    url = (
-        "https://api.open-meteo.com/v1/forecast"
-        "?latitude=12.9716&longitude=77.5946"
-        "&current=temperature_2m,relative_humidity_2m,precipitation"
-        "&timezone=Asia%2FKolkata"
-    )
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": 12.9716,
+        "longitude": 77.5946,
+        "current": "temperature_2m,relative_humidity_2m,precipitation",
+        "timezone": "Asia/Kolkata"
+    }
 
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "DengueAIGuardian/1.0"}
-    )
-
-    with urllib.request.urlopen(request, timeout=10) as response:
-        return json.loads(response.read().decode("utf-8"))
-
-
-# =====================================================
-# 5. SIDEBAR NAVIGATION
-# =====================================================
-with st.sidebar:
-    st.markdown("# 🩺 Dengue AI")
-    st.markdown("## GUARDIAN")
-    st.markdown("---")
-    st.markdown("## Navigation")
-
-    page = st.radio(
-        "Choose a page",
-        [
-            "Dashboard",
-            "Symptom Assessment",
-            "Government Information",
-            "Patient Records",
-            "About & Safety"
-        ],
-        label_visibility="collapsed"
-    )
-
-    st.markdown("---")
-    st.caption("Public Health Information Project")
-    st.caption("Educational support only — not a diagnosis.")
+    try:
+        response = requests.get(url, params=params, timeout=8)
+        response.raise_for_status()
+        data = response.json()
+        current = data.get("current", {})
+        return {
+            "temperature": current.get("temperature_2m"),
+            "humidity": current.get("relative_humidity_2m"),
+            "precipitation": current.get("precipitation"),
+            "time": current.get("time")
+        }
+    except (requests.RequestException, ValueError):
+        return None
 
 
-# =====================================================
-# 6. DASHBOARD
-# =====================================================
+# ---------------- SIDEBAR ----------------
+st.sidebar.markdown("# 🦟 Dengue")
+st.sidebar.markdown("### AI Guardian")
+st.sidebar.caption("Awareness • Assessment • Safety")
+st.sidebar.divider()
+
+page = st.sidebar.radio(
+    "NAVIGATION",
+    [
+        "Dashboard",
+        "Symptom Assessment",
+        "Patient Records",
+        "Weather Monitor",
+        "Food & Prevention",
+        "Government Information",
+        "About & Safety"
+    ]
+)
+
+st.sidebar.divider()
+st.sidebar.caption("Educational support only — not a medical diagnosis.")
+
+
+# ---------------- HEADER ----------------
+st.markdown("""
+<div class="hero">
+    <h1>🦟 Dengue AI Guardian</h1>
+    <p>Community awareness, symptom tracking and prevention support.</p>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ---------------- DASHBOARD ----------------
 if page == "Dashboard":
+    st.subheader("Dashboard")
+    st.write("Monitor saved assessments, current weather and dengue prevention guidance.")
+
+    with get_connection() as conn:
+        total_records = conn.execute(
+            "SELECT COUNT(*) FROM patient_records"
+        ).fetchone()[0]
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        today_records = conn.execute(
+            "SELECT COUNT(*) FROM patient_records WHERE record_date LIKE ?",
+            (today + "%",)
+        ).fetchone()[0]
+
+        warning_records = conn.execute("""
+            SELECT COUNT(*) FROM patient_records
+            WHERE warning_signs != 'None reported'
+        """).fetchone()[0]
+
+    c1, c2, c3 = st.columns(3)
+
+    with c1:
+        st.markdown(
+            f'<div class="metric-card"><div class="metric-label">Saved assessments</div>'
+            f'<div class="metric-value">{total_records}</div></div>',
+            unsafe_allow_html=True
+        )
+
+    with c2:
+        st.markdown(
+            f'<div class="metric-card"><div class="metric-label">Assessments today</div>'
+            f'<div class="metric-value">{today_records}</div></div>',
+            unsafe_allow_html=True
+        )
+
+    with c3:
+        st.markdown(
+            f'<div class="metric-card"><div class="metric-label">Records with warning signs</div>'
+            f'<div class="metric-value">{warning_records}</div></div>',
+            unsafe_allow_html=True
+        )
+
+    st.subheader("Current Bengaluru weather")
+    weather = get_weather()
+
+    if weather:
+        w1, w2, w3 = st.columns(3)
+
+        with w1:
+            st.metric("Temperature", f"{weather['temperature']} °C"
+                      if weather["temperature"] is not None else "Unavailable")
+
+        with w2:
+            st.metric("Relative humidity", f"{weather['humidity']}%"
+                      if weather["humidity"] is not None else "Unavailable")
+
+        with w3:
+            st.metric("Precipitation", f"{weather['precipitation']} mm"
+                      if weather["precipitation"] is not None else "Unavailable")
+
+        st.caption(f"Weather observation time: {weather['time']}")
+    else:
+        st.warning("Weather service is temporarily unavailable.")
 
     st.markdown("""
-    <div class="app-banner">
-        <h2>Dengue AI Guardian</h2>
-        <p>Dengue Risk Assessment & Public Health Insights</p>
+    <div class="info-card">
+    <b>Important:</b> Weather conditions alone cannot predict whether a person has dengue.
+    Symptoms and laboratory tests need assessment by a qualified healthcare professional.
     </div>
     """, unsafe_allow_html=True)
 
-    st.write(
-        "A healthcare information dashboard for symptom entry, "
-        "weather observations, and public-health resources."
-    )
+    st.subheader("Quick actions")
+    q1, q2 = st.columns(2)
 
-    try:
-        weather = get_weather()
-        current = weather.get("current", {})
+    with q1:
+        if st.button("Open Symptom Assessment", use_container_width=True):
+            st.info("Choose 'Symptom Assessment' from the navigation menu.")
 
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-            st.metric(
-                "Temperature",
-                f'{current.get("temperature_2m", "N/A")} °C'
-            )
-
-        with c2:
-            st.metric(
-                "Humidity",
-                f'{current.get("relative_humidity_2m", "N/A")} %'
-            )
-
-        with c3:
-            st.metric(
-                "Precipitation",
-                f'{current.get("precipitation", "N/A")} mm'
-            )
-
-        st.caption(
-            "Source: Open-Meteo API · Bengaluru. Weather does not "
-            "diagnose dengue or predict an individual's infection."
-        )
-
-    except Exception:
-        st.warning(
-            "Weather data is temporarily unavailable. "
-            "Please check your internet connection."
-        )
-
-    st.markdown("---")
-    st.subheader("Platform modules")
-
-    c1, c2 = st.columns(2)
-
-    with c1:
-        st.markdown("### 🩺 Symptom Assessment")
-        st.write("Enter symptoms and available platelet information.")
-
-    with c2:
-        st.markdown("### 📊 Government Information")
-        st.write("Visit the official source for published dengue reports.")
-
-    st.info(
-        "If dengue is suspected, consult a qualified healthcare "
-        "professional. Do not delay care based on this app."
-    )
+    with q2:
+        if st.button("View Patient Records", use_container_width=True):
+            st.info("Choose 'Patient Records' from the navigation menu.")
 
 
-# =====================================================
-# 7. SYMPTOM ASSESSMENT
-# =====================================================
+# ---------------- SYMPTOM ASSESSMENT ----------------
 elif page == "Symptom Assessment":
+    st.subheader("Symptom Assessment")
+    st.write("Enter the information below. Fields are labelled individually for clarity.")
 
-    st.title("Patient Symptom Assessment")
-    st.write(
-        "Enter the available information. The score below is an "
-        "unvalidated educational rule, not a diagnostic or ML model."
+    st.warning(
+        "This form records symptoms for awareness and tracking. "
+        "It does not calculate a validated dengue probability or diagnose dengue."
     )
 
-    with st.form("assessment_form"):
+    with st.form("dengue_assessment_form"):
+        st.markdown("### Patient Information")
 
-        st.subheader("Patient Information")
+        col1, col2 = st.columns(2)
 
-        c1, c2 = st.columns(2)
-
-        with c1:
-            fever = st.number_input(
+        with col1:
+            temperature = st.number_input(
                 "Body temperature (°C)",
-                min_value=30.0,
-                max_value=45.0,
+                min_value=34.0,
+                max_value=43.0,
                 value=37.0,
-                step=0.1
+                step=0.1,
+                help="Enter the measured temperature in degrees Celsius."
             )
 
             headache = st.selectbox(
@@ -420,18 +356,10 @@ elif page == "Symptom Assessment":
                 ["No", "Yes"]
             )
 
-        with c2:
-            platelet_count = st.number_input(
-                "Platelet count (per µL; enter 0 if unknown)",
-                min_value=0,
-                max_value=1000000,
-                value=0,
-                step=1000
-            )
-
+        with col2:
             joint_pain = st.selectbox(
                 "Joint or muscle pain",
-                ["No", "Yes"]
+                ["No", "Mild", "Severe"]
             )
 
             nausea = st.selectbox(
@@ -440,201 +368,308 @@ elif page == "Symptom Assessment":
             )
 
             travel_history = st.selectbox(
-                "Recent travel to a dengue-prone area",
-                ["No", "Yes"]
+                "Recent travel to an area with reported dengue",
+                ["Unknown", "No", "Yes"]
             )
 
+            platelet_count = st.number_input(
+                "Platelet count (if known, cells/µL)",
+                min_value=0,
+                max_value=1000000,
+                value=0,
+                step=1000,
+                help="Enter 0 if you do not have a platelet report."
+            )
+
+        st.markdown("### Warning Signs")
+        st.caption("Select any warning signs currently present.")
+
+        warning_sign_options = [
+            "Severe abdominal pain",
+            "Repeated or persistent vomiting",
+            "Bleeding from nose or gums",
+            "Blood in vomit or stool",
+            "Difficulty breathing",
+            "Unusual drowsiness, confusion or restlessness",
+            "Cold, pale or clammy skin"
+        ]
+
+        warning_signs = st.multiselect(
+            "Warning signs",
+            warning_sign_options,
+            default=[],
+            help="These signs can indicate severe illness and require urgent medical assessment."
+        )
+
+        consent = st.checkbox(
+            "I understand this is an educational tool and not a medical diagnosis."
+        )
+
         submitted = st.form_submit_button(
-            "Submit Assessment",
+            "Save Assessment",
             use_container_width=True
         )
 
     if submitted:
-        score = 0
-
-        # Educational score only; not clinically validated.
-        if fever >= 38:
-            score += 2
-        if headache == "Severe":
-            score += 2
-        elif headache == "Mild":
-            score += 1
-        if rash == "Yes":
-            score += 1
-        if vomiting == "Yes":
-            score += 1
-        if 0 < platelet_count < 150000:
-            score += 2
-        if joint_pain == "Yes":
-            score += 1
-        if nausea == "Yes":
-            score += 1
-        if travel_history == "Yes":
-            score += 1
-
-        record = {
-            "fever_temp": fever,
-            "headache": headache,
-            "skin_rash": rash,
-            "vomiting": vomiting,
-            "platelet_count": platelet_count,
-            "joint_pain": joint_pain,
-            "nausea": nausea,
-            "travel_history": travel_history,
-            "symptom_score": score
-        }
-
-        try:
-            save_record(record)
-            st.success("Assessment record saved successfully.")
-        except Exception:
-            st.error("Could not save the assessment record.")
-
-        st.subheader("Assessment Summary")
-        st.metric("Unvalidated symptom score", score)
-
-        st.warning(
-            "This score cannot confirm or exclude dengue. A low score "
-            "does not mean that a person is free from dengue."
-        )
-
-        if vomiting == "Yes":
-            st.warning(
-                "Seek medical advice promptly if vomiting is repeated "
-                "or fluids cannot be kept down."
-            )
-
-        if 0 < platelet_count < 100000:
-            st.warning(
-                "This platelet count needs prompt clinical review. "
-                "A healthcare professional must interpret the result."
-            )
-
-        st.subheader("Urgent warning signs")
-        st.write(
-            "Seek urgent medical care for severe abdominal pain, "
-            "persistent vomiting, bleeding, breathing difficulty, "
-            "confusion, fainting, extreme drowsiness, or cold/clammy skin."
-        )
-
-        st.info(
-            "A healthcare professional can decide whether dengue testing "
-            "and other blood tests are needed."
-        )
-
-
-# =====================================================
-# 8. GOVERNMENT INFORMATION
-# =====================================================
-elif page == "Government Information":
-
-    st.title("Official Dengue Information")
-
-    st.write(
-        "Published surveillance reports may be updated periodically "
-        "and should not be treated as a live case count."
-    )
-
-    st.markdown(
-        "[Open the National Centre for Vector Borne Diseases Control]"
-        "(https://ncvbdc.mohfw.gov.in/)"
-    )
-
-    st.caption(
-        "Use the official website to locate the latest available reports. "
-        "This page does not invent or estimate case figures."
-    )
-
-
-# =====================================================
-# 9. PATIENT RECORDS
-# =====================================================
-elif page == "Patient Records":
-
-    st.title("Assessment Records")
-
-    st.warning(
-        "This demo database may not persist across hosted-app restarts. "
-        "Do not enter names, phone numbers, addresses, or other "
-        "identifying patient information."
-    )
-
-    try:
-        records = load_records()
-
-        if records.empty:
-            st.info(
-                "No records available yet. Submit an assessment first."
-            )
+        if not consent:
+            st.error("Please confirm the educational-use notice before saving.")
         else:
-            st.metric("Saved assessments", len(records))
-            st.dataframe(records, use_container_width=True)
+            warning_text = ", ".join(warning_signs) if warning_signs else "None reported"
 
-            st.download_button(
-                "Download CSV",
-                data=records.to_csv(index=False).encode("utf-8"),
-                file_name="dengue_assessment_records.csv",
-                mime="text/csv"
+            # A simple count for record tracking only; NOT a dengue prediction.
+            symptom_score = sum([
+                temperature >= 38.0,
+                headache != "No",
+                rash == "Yes",
+                vomiting == "Yes",
+                joint_pain != "No",
+                nausea == "Yes"
+            ])
+
+            try:
+                with get_connection() as conn:
+                    conn.execute("""
+                        INSERT INTO patient_records (
+                            record_date, temperature, headache, rash, vomiting,
+                            joint_pain, nausea, travel_history, platelet_count,
+                            warning_signs, symptom_score
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        datetime.now().isoformat(timespec="seconds"),
+                        temperature,
+                        headache,
+                        rash,
+                        vomiting,
+                        joint_pain,
+                        nausea,
+                        travel_history,
+                        platelet_count if platelet_count > 0 else None,
+                        warning_text,
+                        symptom_score
+                    ))
+
+                st.success("Assessment saved successfully.")
+
+                if warning_signs:
+                    st.error(
+                        "URGENT: One or more warning signs were selected. "
+                        "Seek urgent medical care now. Do not wait for this app "
+                        "or a platelet count to decide whether to get help."
+                    )
+                elif temperature >= 38.0:
+                    st.warning(
+                        "A fever was entered. Contact a healthcare professional "
+                        "for advice, especially if fever persists or dengue is suspected."
+                    )
+                else:
+                    st.info(
+                        "Your information was saved. This app cannot rule out dengue. "
+                        "Seek medical advice if symptoms develop or worsen."
+                    )
+
+                if platelet_count > 0 and platelet_count < 100000:
+                    st.warning(
+                        "The entered platelet count is below 100,000 cells/µL. "
+                        "Discuss the result promptly with a healthcare professional. "
+                        "A platelet count alone cannot diagnose or exclude dengue."
+                    )
+
+                st.caption(
+                    f"Symptom items recorded: {symptom_score}. "
+                    "This is a simple count, not a risk score or ML prediction."
+                )
+
+            except sqlite3.Error as error:
+                st.error(f"Could not save the assessment: {error}")
+
+
+# ---------------- PATIENT RECORDS ----------------
+elif page == "Patient Records":
+    st.subheader("Patient Records")
+    st.write("Assessments saved in this app's SQLite database.")
+
+    with get_connection() as conn:
+        rows = conn.execute("""
+            SELECT id, record_date, temperature, headache, rash, vomiting,
+                   joint_pain, nausea, travel_history, platelet_count,
+                   warning_signs, symptom_score
+            FROM patient_records
+            ORDER BY id DESC
+        """).fetchall()
+
+    if rows:
+        records = [dict(row) for row in rows]
+        st.dataframe(records, use_container_width=True, hide_index=True)
+
+        csv_data = st.dataframe if False else None
+        import csv
+        import io
+
+        output = io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=records[0].keys())
+        writer.writeheader()
+        writer.writerows(records)
+
+        st.download_button(
+            "Download records as CSV",
+            data=output.getvalue(),
+            file_name="dengue_guardian_records.csv",
+            mime="text/csv"
+        )
+
+        st.caption(
+            "Privacy note: these records are stored in the app's SQLite database. "
+            "Avoid entering identifiable personal information in a public demo."
+        )
+    else:
+        st.info("No saved assessments yet. Complete the Symptom Assessment form first.")
+
+
+# ---------------- WEATHER MONITOR ----------------
+elif page == "Weather Monitor":
+    st.subheader("Bengaluru Weather Monitor")
+    st.write("Current weather data retrieved from Open-Meteo.")
+
+    if st.button("Refresh weather"):
+        get_weather.clear()
+
+    weather = get_weather()
+
+    if weather:
+        c1, c2, c3 = st.columns(3)
+
+        with c1:
+            st.metric(
+                "Temperature",
+                f"{weather['temperature']} °C"
+                if weather["temperature"] is not None else "Unavailable"
             )
 
-    except Exception:
-        st.error("Could not load records from the database.")
+        with c2:
+            st.metric(
+                "Humidity",
+                f"{weather['humidity']}%"
+                if weather["humidity"] is not None else "Unavailable"
+            )
 
+        with c3:
+            st.metric(
+                "Precipitation",
+                f"{weather['precipitation']} mm"
+                if weather["precipitation"] is not None else "Unavailable"
+            )
 
-# =====================================================
-# 10. ABOUT AND SAFETY
-# =====================================================
-elif page == "About & Safety":
-
-    st.title("About Dengue AI Guardian")
-
-    st.write(
-        "This educational project organizes symptom information, "
-        "displays weather observations, and links to public-health sources."
-    )
-
-    st.subheader("Current features")
+        st.caption(f"Observation time: {weather['time']}")
+    else:
+        st.error("Could not retrieve live weather right now. Please try again later.")
 
     st.markdown("""
-    - Symptom form
-    - Educational rule-based score
-    - Live weather data from Open-Meteo
-    - Local SQLite assessment records
-    - Official government information link
+    <div class="info-card">
+    Weather information is environmental context only. It is not patient data,
+    and it cannot confirm or predict an individual dengue infection.
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# ---------------- FOOD & PREVENTION ----------------
+elif page == "Food & Prevention":
+    st.subheader("Food, Hydration & Prevention")
+
+    st.markdown("### During a fever or suspected dengue")
+
+    st.markdown("""
+    - Drink fluids regularly, such as water or oral rehydration solution (ORS),
+      if you can drink safely.
+    - Eat small, balanced meals that you tolerate, such as rice, dal, soup,
+      cooked vegetables and fruit.
+    - Follow the advice of your treating healthcare professional.
+    - Do not rely on papaya leaf juice, special foods or supplements as a cure.
     """)
 
-    st.subheader("Medical disclaimer")
+    st.markdown("### Avoid mosquito bites")
+
+    st.markdown("""
+    - Use an appropriate mosquito repellent according to its label.
+    - Wear clothing that covers arms and legs where practical.
+    - Use window screens or mosquito nets.
+    - Empty, cover or clean containers where water collects at least weekly.
+    - Seek medical advice if you have fever and suspect dengue.
+    """)
+
+    st.warning(
+        "If dengue is suspected, do not self-medicate with aspirin or ibuprofen "
+        "because they can increase bleeding risk. Ask a healthcare professional "
+        "which medicine is appropriate for you."
+    )
 
     st.error(
-        "This is not a validated diagnostic system and does not use "
-        "a trained machine-learning model. It cannot diagnose dengue."
+        "Seek urgent medical care for severe abdominal pain, persistent vomiting, "
+        "bleeding, breathing difficulty, confusion, or cold and clammy skin."
     )
 
-    st.write(
-        "Seek urgent medical care for severe abdominal pain, persistent "
-        "vomiting, bleeding, difficulty breathing, confusion, fainting, "
-        "or cold/clammy skin."
+
+# ---------------- GOVERNMENT INFORMATION ----------------
+elif page == "Government Information":
+    st.subheader("Government Information & Resources")
+
+    st.markdown("""
+    Use trusted public-health sources for current dengue guidance:
+
+    - **National Centre for Vector Borne Diseases Control (NCVBDC):**
+      https://ncvbdc.mohfw.gov.in/
+    - **World Health Organization — Dengue:**
+      https://www.who.int/news-room/fact-sheets/detail/dengue-and-severe-dengue
+    - **Open-Meteo weather service:**
+      https://open-meteo.com/
+    """)
+
+    st.info(
+        "This page provides links to public resources. It does not automatically "
+        "fetch official dengue case statistics, and no live case count is claimed."
     )
 
-    st.subheader("Data and privacy")
 
-    st.write(
-        "The demo stores assessment data in a local SQLite file. "
-        "Hosted storage may be temporary. Production use requires "
-        "appropriate security, access control, and privacy safeguards."
+# ---------------- ABOUT & SAFETY ----------------
+elif page == "About & Safety":
+    st.subheader("About Dengue AI Guardian")
+
+    st.markdown("""
+    **Purpose**
+
+    Dengue AI Guardian is an educational prototype for symptom recording,
+    environmental context, prevention awareness and basic record management.
+
+    **Current capabilities**
+    - Symptom assessment form
+    - SQLite storage for assessment records
+    - Current weather data from Open-Meteo
+    - CSV export of saved records
+    - Prevention and public-health links
+
+    **Current limitations**
+    - No clinically validated dengue prediction model is implemented.
+    - Symptom counts are not a diagnosis or calibrated risk estimate.
+    - Weather data does not establish a patient's infection status.
+    - The app does not replace a doctor, blood tests or emergency care.
+    - SQLite data on a hosted service may not be permanent across restarts
+      or redeployments, depending on the hosting environment.
+    """)
+
+    st.error(
+        "Emergency warning: severe abdominal pain, persistent vomiting, bleeding, "
+        "difficulty breathing, confusion or cold/clammy skin require urgent medical care."
     )
 
     st.markdown(
-        "[Open-Meteo weather service](https://open-meteo.com/)  \n"
-        "[Government dengue information](https://ncvbdc.mohfw.gov.in/)"
+        "For suspected dengue, consult a qualified healthcare professional. "
+        "Do not delay care because of a result shown by this app."
     )
 
 
-# =====================================================
-# 11. FOOTER
-# =====================================================
-st.markdown("---")
+# ---------------- FOOTER ----------------
+st.divider()
 st.caption(
-    "Dengue AI Guardian | Educational public-health project | "
-    "Not a substitute for professional medical advice"
+    "Dengue AI Guardian • Educational prototype • "
+    "Not a substitute for professional medical advice."
 )
