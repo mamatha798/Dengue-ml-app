@@ -1,11 +1,13 @@
 
     st.subheader("Patient Records")
+       st.subheader("Patient Records")
     if supabase is not None:
         st.write("Records are loaded from the Supabase database.")
     else:
         st.write("Supabase is not configured yet; records are loaded from the app's local SQLite database.")
         if SUPABASE_ERROR:
             st.warning("Supabase could not be initialized. Check the Secrets values and app logs.")
+
     records = get_records()
 
     if records.empty:
@@ -18,6 +20,11 @@
             data=csv_bytes,
             file_name="dengue_patient_records.csv",
             mime="text/csv",
+        )
+        st.caption(
+            "Privacy: avoid entering names, phone numbers, addresses or other direct identifiers. "
+            "A local SQLite file on a hosted app may not be durable across restarts/redeployments."
+        )
         )
         st.caption(
             "Privacy: avoid entering names, phone numbers, addresses or other direct identifiers. "
