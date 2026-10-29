@@ -1,26 +1,3 @@
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     st.subheader("Patient Records")
     if supabase is not None:
