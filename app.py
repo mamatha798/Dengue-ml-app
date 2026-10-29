@@ -1,393 +1,34 @@
-import sqlite3
-from datetime import datetime
-from pathlib import Path
-
-import pandas as pd
-import requests
-import streamlit as st
-
-# ------------------------------------------------------------
-# Dengue AI Guardian — educational screening dashboard
-# ------------------------------------------------------------
-from supabase import create_client
-import os
-
-SUPABASE_URL = st.secrets.get("SUPABASE_URL", "")
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "")
-
-supabase = None
-
-if SUPABASE_URL and SUPABASE_KEY:
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-st.set_page_config(
-    page_title="Dengue AI Guardian",
-    page_icon="🩺",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-DB_PATH = Path(__file__).with_name("dengue_data.db")
-WARNING_DEFAULT = "None reported"
+ 
 
 
-# ----------------------------- Styling -----------------------
-st.markdown(
-    """
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    html, body, [class*="css"] { font-family: Inter, sans-serif; }
-    .stApp { background: #f4f8fb; }
-    [data-testid="stSidebar"] { background: #102a43; }
-    [data-testid="stSidebar"] * { color: #f4f8fb !important; }
-    [data-testid="stMain"] label,
-    [data-testid="stMain"] [data-testid="stWidgetLabel"],
-    [data-testid="stMain"] [data-testid="stWidgetLabel"] p {
-        color: #17324d !important;
-        font-weight: 600 !important;
-    }
-    [data-testid="stMain"] { color: #17324d; }
-    .hero {
-        padding: 1.5rem 1.6rem; border-radius: 18px;
-        background: linear-gradient(120deg, #123b55, #087e8b);
-        color: white; margin-bottom: 1rem;
-    }
-    .hero h1 { color: white; margin: 0; font-size: 2rem; }
-    .hero p { color: #e6f7fa; margin: .4rem 0 0 0; }
-    .small-note { color: #526777; font-size: .9rem; }
-    div[data-testid="stMetric"] {
-        background: white; border: 1px solid #dce7ee;
-        padding: 14px; border-radius: 14px;
-    }
-    div.stButton > button[kind="primary"] {
-        background: #087e8b; border: 0; color: white;
-        border-radius: 10px; font-weight: 700;
-    }
-    /* Fix blurry weather metrics and values */
-[data-testid="stMetric"] {
-    background-color: #ffffff !important;
-    border: 1px solid #dce7ee !important;
-    border-radius: 14px !important;
-    padding: 18px !important;
-    opacity: 1 !important;
-    filter: none !important;
-}
-
-[data-testid="stMetricLabel"],
-[data-testid="stMetricLabel"] p {
-    color: #17324d !important;
-    opacity: 1 !important;
-    filter: none !important;
-    font-size: 15px !important;
-    font-weight: 700 !important;
-}
-
-[data-testid="stMetricValue"],
-[data-testid="stMetricValue"] div,
-[data-testid="stMetricValue"] p {
-    color: #087e8b !important;
-    opacity: 1 !important;
-    filter: none !important;
-    font-size: 30px !important;
-    font-weight: 800 !important;
-    -webkit-text-fill-color: #087e8b !important;
-}
-
-[data-testid="stMetricDelta"] {
-    opacity: 1 !important;
-    filter: none !important;
-}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
 
 
-# ----------------------------- Database ----------------------
-def get_connection():
-    conn = sqlite3.connect(str(DB_PATH), timeout=20)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
-def initialize_database():
-    """Create the table if missing and safely add missing columns to old DBs."""
-    with get_connection() as conn:
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS patient_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                record_date TEXT NOT NULL,
-                temperature REAL,
-                headache TEXT,
-                rash TEXT,
-                vomiting TEXT,
-                joint_pain TEXT,
-                nausea TEXT,
-                travel_history TEXT,
-                platelet_count INTEGER,
-                warning_signs TEXT DEFAULT 'None reported',
-                symptom_score INTEGER DEFAULT 0
-            )
-            """
-        )
-
-        existing = {
-            row["name"]
-            for row in conn.execute("PRAGMA table_info(patient_records)").fetchall()
-        }
-
-        # Add columns missing from an older version without deleting existing rows.
-        required = {
-            "record_date": "TEXT",
-            "temperature": "REAL",
-            "headache": "TEXT",
-            "rash": "TEXT",
-            "vomiting": "TEXT",
-            "joint_pain": "TEXT",
-            "nausea": "TEXT",
-            "travel_history": "TEXT",
-            "platelet_count": "INTEGER",
-            "warning_signs": "TEXT DEFAULT 'None reported'",
-            "symptom_score": "INTEGER DEFAULT 0",
-        }
-        for column, sql_type in required.items():
-            if column not in existing:
-                conn.execute(f"ALTER TABLE patient_records ADD COLUMN {column} {sql_type}")
-
-        conn.execute(
-            "UPDATE patient_records SET warning_signs = ? WHERE warning_signs IS NULL",
-            (WARNING_DEFAULT,),
-        )
-        conn.execute(
-            "UPDATE patient_records SET symptom_score = 0 WHERE symptom_score IS NULL"
-        )
 
 
-initialize_database()
 
 
-# ----------------------------- Helpers ------------------------
-def get_records():
-    with get_connection() as conn:
-        return pd.read_sql_query(
-            "SELECT * FROM patient_records ORDER BY id DESC", conn
-        )
 
 
-def save_assessment(values):
-    with get_connection() as conn:
-        conn.execute(
-            """
-            INSERT INTO patient_records (
-                record_date, temperature, headache, rash, vomiting,
-                joint_pain, nausea, travel_history, platelet_count,
-                warning_signs, symptom_score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                values["temperature"],
-                values["headache"],
-                values["rash"],
-                values["vomiting"],
-                values["joint_pain"],
-                values["nausea"],
-                values["travel_history"],
-                values["platelet_count"],
-                values["warning_signs"],
-                values["symptom_score"],
-            ),
-        )
 
 
-def fetch_weather():
-    """Open-Meteo current conditions for Bengaluru; no API key required."""
-    url = "https://api.open-meteo.com/v1/forecast"
-    params = {
-        "latitude": 12.9716,
-        "longitude": 77.5946,
-        "current": "temperature_2m,relative_humidity_2m,precipitation",
-        "timezone": "Asia/Kolkata",
-    }
-    try:
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        current = data.get("current", {})
-        return {
-            "temperature": current.get("temperature_2m"),
-            "humidity": current.get("relative_humidity_2m"),
-            "precipitation": current.get("precipitation"),
-            "time": current.get("time", "Not supplied"),
-        }, None
-    except (requests.RequestException, ValueError) as exc:
-        return None, str(exc)
 
 
-def symptom_score(values):
-    """Transparent symptom count for education, not a trained ML prediction."""
-    keys = ("headache", "rash", "vomiting", "joint_pain", "nausea")
-    return sum(1 for key in keys if values[key] == "Yes")
 
 
-def show_emergency_message(warning_signs):
-    if warning_signs != WARNING_DEFAULT:
-        st.error(
-            "⚠️ A warning sign was selected. Please seek urgent medical assessment "
-            "now. If the person is very drowsy, confused, fainting, has severe "
-            "abdominal pain, persistent vomiting, bleeding, breathing difficulty, "
-            "or cold/clammy skin, contact local emergency services immediately."
-        )
 
 
-# ----------------------------- Sidebar ------------------------
-with st.sidebar:
-    st.markdown("## 🩺 Dengue AI Guardian")
-    st.caption("Awareness • Screening • Prevention")
-    page = st.radio(
-        "Navigate",
-        [
-            "Dashboard",
-            "Symptom Assessment",
-            "Patient Records",
-            "Weather Monitor",
-            "Food & Prevention",
-            "Government Information",
-            "About & Safety",
-        ],
-    )
-    st.divider()
-    st.caption("Educational support only — not a medical diagnosis.")
 
 
-# ----------------------------- Header -------------------------
-st.markdown(
-    """
-    <div class="hero">
-      <h1>🩺 Dengue AI Guardian</h1>
-      <p>Understand symptoms, record assessments, monitor local weather,
-      and learn practical prevention steps.</p>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
-
-# ----------------------------- Dashboard ----------------------
-if page == "Dashboard":
-    st.subheader("Dashboard")
-    st.write("Monitor saved assessments, current weather and dengue prevention guidance.")
-    records = get_records()
-
-    total = len(records)
-    warning_count = 0
-    if not records.empty and "warning_signs" in records.columns:
-        warning_count = int(
-            records["warning_signs"]
-            .fillna(WARNING_DEFAULT)
-            .ne(WARNING_DEFAULT)
-            .sum()
-        )
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Saved assessments", total)
-    c2.metric("Assessments with warning signs", warning_count)
-    c3.metric("Weather data", "Live check available")
-
-    st.markdown("### Recent assessments")
-    if records.empty:
-        st.info("No assessments saved yet. Open Symptom Assessment to add one.")
-    else:
-        display_cols = [
-            col for col in [
-                "record_date", "temperature", "platelet_count",
-                "symptom_score", "warning_signs"
-            ] if col in records.columns
-        ]
-        st.dataframe(records[display_cols].head(10), use_container_width=True, hide_index=True)
-
-    st.markdown("### Important")
-    st.info(
-        "Dengue cannot be confirmed from symptoms or weather alone. A healthcare "
-        "professional may recommend examination and blood tests based on the person's condition."
-    )
-
-
-# ----------------------------- Symptom Assessment -------------
-elif page == "Symptom Assessment":
-    st.subheader("Symptom Assessment")
-    st.write("Enter information to create an educational symptom summary and save a record.")
-
-    with st.form("assessment_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            temperature = st.number_input(
-                "Body temperature (°C)", min_value=30.0, max_value=45.0,
-                value=37.0, step=0.1, help="Enter the measured temperature if known."
-            )
-            headache = st.radio("Headache", ["No", "Yes"], horizontal=True)
-            rash = st.radio("Skin rash", ["No", "Yes"], horizontal=True)
-            vomiting = st.radio("Vomiting", ["No", "Yes"], horizontal=True)
-        with col2:
-            joint_pain = st.radio("Joint or muscle pain", ["No", "Yes"], horizontal=True)
-            nausea = st.radio("Nausea", ["No", "Yes"], horizontal=True)
-            travel_history = st.selectbox(
-                "Recent travel to an area with dengue activity?",
-                ["Unknown", "No", "Yes"],
-            )
-            platelet_count = st.number_input(
-                "Platelet count (if available)", min_value=0, max_value=1000000,
-                value=0, step=1000, help="Enter 0 if you do not have a report."
-            )
-
-        warning_options = [
-            "None reported",
-            "Severe abdominal pain",
-            "Persistent vomiting",
-            "Bleeding from nose/gums or other bleeding",
-            "Drowsiness, confusion or restlessness",
-            "Difficulty breathing",
-            "Cold/clammy skin or fainting",
-        ]
-        warning_signs = st.selectbox("Warning signs (choose the most urgent one)", warning_options)
-        submitted = st.form_submit_button("Assess and Save Record", type="primary")
-
-    if submitted:
-        values = {
-            "temperature": float(temperature),
-            "headache": headache,
-            "rash": rash,
-            "vomiting": vomiting,
-            "joint_pain": joint_pain,
-            "nausea": nausea,
-            "travel_history": travel_history,
-            "platelet_count": int(platelet_count) if platelet_count > 0 else None,
-            "warning_signs": warning_signs,
-        }
-        values["symptom_score"] = symptom_score(values)
-        try:
-            save_assessment(values)
-            st.success("Assessment saved to the app's SQLite database.")
-        except sqlite3.Error as exc:
-            st.error(f"Could not save this record: {exc}")
-
-        show_emergency_message(warning_signs)
-        st.markdown("### Summary")
-        st.write(f"Symptoms marked 'Yes': **{values['symptom_score']} of 5**")
-        if temperature >= 38:
-            st.warning("A raised temperature was entered. Consider contacting a healthcare professional, especially if symptoms persist or worsen.")
-        if platelet_count > 0:
-            st.write(f"Platelet count entered: **{int(platelet_count):,}**")
-            st.caption("Only a clinician can interpret this result in context; one platelet value alone does not diagnose dengue.")
-        st.info(
-            "This is a symptom count only, not a trained machine-learning prediction and not a dengue diagnosis."
-        )
-
-
-# ----------------------------- Patient Records ----------------
-elif page == "Patient Records":
     st.subheader("Patient Records")
-    st.write("Records are stored in the SQLite database bundled with this app.")
+    if supabase is not None:
+        st.write("Records are loaded from the Supabase database.")
+    else:
+        st.write("Supabase is not configured yet; records are loaded from the app's local SQLite database.")
+        if SUPABASE_ERROR:
+            st.warning("Supabase could not be initialized. Check the Secrets values and app logs.")
     records = get_records()
 
     if records.empty:
@@ -475,8 +116,8 @@ elif page == "About & Safety":
     )
     st.markdown("### What this app does")
     st.markdown(
-        "- Saves assessment entries to SQLite.\n"
-        "- Adds missing columns when an older `patient_records` database is opened.\n"
+        "- Saves assessment entries to Supabase when configured; otherwise uses SQLite.\n"
+        "- Adds missing columns when an older local SQLite database is opened.\n"
         "- Shows saved records and supports CSV export.\n"
         "- Fetches current weather from Open-Meteo on request."
     )
@@ -494,3 +135,12 @@ st.divider()
 st.caption(
     "Dengue AI Guardian • Educational prototype • Keep personal health information private."
 )
+if supabase is None:
+    st.sidebar.info("Database mode: local SQLite. Add SUPABASE_URL and SUPABASE_KEY in Streamlit Secrets to enable Supabase.")
+else:
+    st.sidebar.success("Database mode: Supabase")
+
+You're using the free version of ChatGPT. Upgrade for advanced models, better memory, and higher-quality image creation.
+
+
+⋮⋮⋮⋮
