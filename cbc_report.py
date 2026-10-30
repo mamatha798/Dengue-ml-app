@@ -263,4 +263,4 @@ def show_cbc_report():
         "CBC values alone cannot confirm or rule out dengue. "
         "Consult a qualified healthcare professional for medical assessment."
     )
- f
+ 
