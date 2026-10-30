@@ -1,0 +1,9 @@
+.env
+*.db
+__pycache__/
+*.pyc
+.venv/
+venv/
+app/
+app_backup.py
+app_voice_experiment.py

@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 import streamlit as st
+from cbc_report import show_cbc_report
 
 # --------------------------------------------------
 # PAGE CONFIGURATION
@@ -215,6 +216,7 @@ with st.sidebar:
         [
             "Dashboard",
             "Symptom Assessment",
+            "CBC Report",
             "Patient Records",
             "Weather Monitor",
             "Food & Prevention",
@@ -450,7 +452,9 @@ elif page == "Symptom Assessment":
 # --------------------------------------------------
 # PATIENT RECORDS
 # --------------------------------------------------
-
+elif page == "CBC Report":
+    show_cbc_report()
+    
 elif page == "Patient Records":
     st.subheader("📋 Patient Records")
 

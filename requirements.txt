@@ -3,3 +3,7 @@ pandas
 matplotlib
 lxml
 supabase
+requests
+google-genai
+pypdf
+python-dotenv
